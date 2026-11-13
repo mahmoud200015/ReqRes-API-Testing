@@ -1,0 +1,703 @@
+{
+  "auth": {
+    "apikey": [
+      {
+        "key": "key",
+        "type": "string",
+        "value": "x-api-key"
+      },
+      {
+        "key": "value",
+        "type": "string",
+        "value": "{{auth_secret_0m92}}"
+      }
+    ],
+    "type": "apikey"
+  },
+  "event": [
+    {
+      "listen": "test",
+      "script": {
+        "exec": [
+          "// ============================================\r",
+          "// 1. Response Time Validation\r",
+          "// ============================================\r",
+          "\r",
+          "pm.test(\"Response time is below 1 second\", function () {\r",
+          "\r",
+          "    pm.expect(pm.response.responseTime).to.be.below(1000);\r",
+          "\r",
+          "});\r",
+          "\r",
+          "\r",
+          "// ============================================\r",
+          "// 2. Server Error Validation\r",
+          "// ============================================\r",
+          "\r",
+          "pm.test(\"API does not return a server error\", function () {\r",
+          "\r",
+          "    pm.expect(pm.response.code).to.be.below(500);\r",
+          "\r",
+          "});\r",
+          "\r",
+          "\r",
+          "// ============================================\r",
+          "// 3. Response Body Validation\r",
+          "// ============================================\r",
+          "\r",
+          "const responseBody = pm.response.text();\r",
+          "\r",
+          "if (responseBody.trim() !== \"\") {\r",
+          "\r",
+          "    pm.test(\"Response body is valid JSON\", function () {\r",
+          "\r",
+          "        pm.expect(function () {\r",
+          "\r",
+          "            JSON.parse(responseBody);\r",
+          "\r",
+          "        }).to.not.throw();\r",
+          "\r",
+          "    });\r",
+          "\r",
+          "}\r",
+          "\r",
+          "\r",
+          "// ============================================\r",
+          "// 4. Content-Type Validation\r",
+          "// ============================================\r",
+          "\r",
+          "if (responseBody.trim() !== \"\") {\r",
+          "\r",
+          "    pm.test(\"Response Content-Type is JSON\", function () {\r",
+          "\r",
+          "        pm.expect(\r",
+          "            pm.response.headers.get(\"Content-Type\")\r",
+          "        ).to.include(\"application/json\");\r",
+          "\r",
+          "    });\r",
+          "\r",
+          "}\r",
+          "\r",
+          "\r",
+          "// ============================================\r",
+          "// 5. Response Body Is Not Unexpectedly Empty\r",
+          "// ============================================\r",
+          "\r",
+          "if (pm.response.code !== 204) {\r",
+          "\r",
+          "    pm.test(\"Response body is not empty\", function () {\r",
+          "\r",
+          "        pm.expect(responseBody.trim()).to.not.be.empty;\r",
+          "\r",
+          "    });\r",
+          "\r",
+          "}"
+        ],
+        "type": "text/javascript"
+      }
+    }
+  ],
+  "info": {
+    "_exporter_id": "29902671",
+    "_postman_id": "a938ddc0-9b6a-4582-bae3-559a7f07fee9",
+    "description": "## Overview\n\nThis collection covers the [Reqres](https://reqres.in) REST API — a hosted sample API designed for testing and prototyping front-end and back-end integrations. It demonstrates real HTTP responses against a realistic user and resource data model, making it ideal for validating client behavior without a live production backend.\n\n## What's Covered\n\nThe collection is organized around three functional areas:\n\n**Users** — Full CRUD lifecycle for user records: listing all users (paginated), fetching a single user by ID, handling a not-found (404) case, creating a new user, updating an existing user via both PUT and PATCH, deleting a user, and triggering a delayed response to test timeout handling.\n\n**Resources** — Read operations for a secondary resource type: listing all resources, fetching a single resource, and handling a not-found case.\n\n**Authentication** — Registration and login flows covering both the happy path (success with token) and an error path (missing password), useful for validating client-side error handling.\n\n## Authentication\n\nRequests are authenticated via an API key (`x-api-key`) sent in the request header. The key is configured at the collection level and is automatically applied to all requests.\n\n## Automated Tests\n\nA collection-level post-response script runs automatically after every request and validates:\n\n- Response time is under 1 second\n    \n- No server-side errors (status below 500)\n    \n- Response body is valid JSON (when present)\n    \n- `Content-Type` header is `application/json` (when body is present)\n    \n- Response body is not unexpectedly empty (except for 204 responses)\n    \n\n## Environment\n\nUse the `base_url` environment variable to switch between Local, Testing, Staging, and Production targets without modifying individual requests.",
+    "name": "Reqres",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "description": "Contains all requests related to user management, covering the full CRUD lifecycle and edge cases.\n\n**Requests in this folder:**\n- **List Users** — paginated list of users (`GET /api/users?page=2`)\n- **Single User** — fetch a specific user by ID (`GET /api/users/2`)\n- **User Not Found** — 404 response for a non-existent user (`GET /api/users/23`)\n- **Create User** — create a new user with name and job (`POST /api/users`)\n- **Update User (PUT)** — full replacement update of a user (`PUT /api/users/2`)\n- **Update User (PATCH)** — partial update of a user's fields (`PATCH /api/users/2`)\n- **Delete User** — remove a user, returns 204 No Content (`DELETE /api/users/2`)\n- **Delayed Response** — simulates a slow response using the `delay` query param, useful for testing timeout and loading behavior (`GET /api/users?delay=2`)\n\n**User object fields:** `id`, `email`, `first_name`, `last_name`, `avatar`",
+      "item": [
+        {
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const response = pm.response.json();\n\n// 1. Status Code\npm.test(\"Status code is 200\", function () {\n    pm.response.to.have.status(200);\n});\n\n// 2. Response Structure\npm.test(\"Response contains all required pagination fields\", function () {\n    pm.expect(response).to.have.property(\"page\");\n    pm.expect(response).to.have.property(\"per_page\");\n    pm.expect(response).to.have.property(\"total\");\n    pm.expect(response).to.have.property(\"total_pages\");\n    pm.expect(response).to.have.property(\"data\");\n});\n\n// 3. Pagination Data Types\npm.test(\"Pagination fields have valid data types\", function () {\n    pm.expect(response.page).to.be.a(\"number\");\n    pm.expect(response.per_page).to.be.a(\"number\");\n    pm.expect(response.total).to.be.a(\"number\");\n    pm.expect(response.total_pages).to.be.a(\"number\");\n});\n\n// 4. Pagination Values\npm.test(\"Pagination values are valid\", function () {\n    pm.expect(response.page).to.be.above(0);\n    pm.expect(response.per_page).to.be.above(0);\n    pm.expect(response.total).to.be.at.least(0);\n    pm.expect(response.total_pages).to.be.at.least(0);\n});\n\n// 5. Requested Page Validation\npm.test(\"Response page matches requested page\", function () {\n    pm.expect(response.page).to.equal(2);\n});\n\n// 6. Users Data\npm.test(\"Users data is an array\", function () {\n    pm.expect(response.data).to.be.an(\"array\");\n});\n\n// 7. Number of Returned Users\npm.test(\"Returned users count matches per_page\", function () {\n    pm.expect(response.data.length).to.equal(response.per_page);\n});\n\n// 8. User Object Structure\npm.test(\"Every user contains the required fields\", function () {\n    response.data.forEach(function (user) {\n        pm.expect(user).to.have.property(\"id\");\n        pm.expect(user).to.have.property(\"email\");\n        pm.expect(user).to.have.property(\"first_name\");\n        pm.expect(user).to.have.property(\"last_name\");\n        pm.expect(user).to.have.property(\"avatar\");\n    });\n});\n\n// 9. User ID Validation\npm.test(\"Every user has a positive integer ID\", function () {\n    response.data.forEach(function (user) {\n        pm.expect(user.id).to.be.a(\"number\");\n        pm.expect(user.id).to.be.above(0);\n        pm.expect(user.id % 1).to.equal(0);\n    });\n});\n\n// 10. Email Validation\npm.test(\"Every user has a valid email format\", function () {\n    response.data.forEach(function (user) {\n        pm.expect(user.email).to.match(\n            /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/\n        );\n    });\n});\n\n// 11. Name Validation\npm.test(\"User names are not empty\", function () {\n    response.data.forEach(function (user) {\n        pm.expect(user.first_name.trim()).to.not.be.empty;\n        pm.expect(user.last_name.trim()).to.not.be.empty;\n    });\n});\n\n// 12. Avatar Validation\npm.test(\"Every user has a valid avatar URL\", function () {\n    response.data.forEach(function (user) {\n        pm.expect(user.avatar).to.match(/^https?:\\/\\//);\n    });\n});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "name": "List Users",
+          "request": {
+            "body": {
+              "mode": "raw",
+              "options": {
+                "raw": {
+                  "language": "text"
+                }
+              },
+              "raw": ""
+            },
+            "description": "Retrieves a paginated list of users from the API. This request fetches page 2 of the users list, returning an array of user objects alongside pagination metadata (`page`, `per_page`, `total`, `total_pages`).\n\n**Method:** GET  \n**Endpoint:** `/api/users?page=2`\n\n**Response (200 OK)**\n- `page` — current page number\n- `per_page` — number of users per page\n- `total` — total number of users across all pages\n- `total_pages` — total number of pages\n- `data` — array of user objects, each containing `id`, `email`, `first_name`, `last_name`, and `avatar`\n\n**Tests verify:** status 200, presence and correct types of all pagination fields, that the returned page matches the requested page, that `data` is an array with a length equal to `per_page`, that every user has all required fields, positive integer IDs, valid email format, non-empty names, and valid avatar URLs.",
+            "header": [],
+            "method": "GET",
+            "url": {
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "users"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "2"
+                }
+              ],
+              "raw": "{{base_url}}/api/users?page=2"
+            }
+          },
+          "response": []
+        },
+        {
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const response = pm.response.json();\n\n// 1. Verify successful HTTP response\npm.test(\"Status code is 200\", function () {\n    pm.response.to.have.status(200);\n});\n\n// 2. Verify response content type\npm.test(\"Response has JSON content type\", function () {\n    pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/json\");\n});\n\n// 3. Verify response structure\npm.test(\"Response contains user data\", function () {\n    pm.expect(response).to.have.property(\"data\");\n    pm.expect(response.data).to.be.an(\"object\");\n});\n\n// 4. Verify all required user fields exist\npm.test(\"User object contains all required fields\", function () {\n    pm.expect(response.data).to.have.all.keys(\n        \"id\",\n        \"email\",\n        \"first_name\",\n        \"last_name\",\n        \"avatar\"\n    );\n});\n\n// 5. Verify user ID\npm.test(\"User ID is correct\", function () {\n    pm.expect(response.data.id).to.equal(2);\n});\n\n// 6. Verify email\npm.test(\"Email is correct and valid\", function () {\n    pm.expect(response.data.email).to.equal(\"janet.weaver@reqres.in\");\n    pm.expect(response.data.email).to.match(/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/);\n});\n\n// 7. Verify first name\npm.test(\"First name is correct\", function () {\n    pm.expect(response.data.first_name).to.equal(\"Janet\");\n});\n\n// 8. Verify last name\npm.test(\"Last name is correct\", function () {\n    pm.expect(response.data.last_name).to.equal(\"Weaver\");\n});\n\n// 9. Verify avatar URL\npm.test(\"Avatar URL is valid\", function () {\n    pm.expect(response.data.avatar).to.match(/^https?:\\/\\/.+/);\n});\n\n// 10. Verify data types\npm.test(\"User fields have correct data types\", function () {\n    pm.expect(response.data.id).to.be.a(\"number\");\n    pm.expect(response.data.email).to.be.a(\"string\");\n    pm.expect(response.data.first_name).to.be.a(\"string\");\n    pm.expect(response.data.last_name).to.be.a(\"string\");\n    pm.expect(response.data.avatar).to.be.a(\"string\");\n});\n\n// 11. Verify names are not empty\npm.test(\"User names are not empty\", function () {\n    pm.expect(response.data.first_name.trim()).to.not.be.empty;\n    pm.expect(response.data.last_name.trim()).to.not.be.empty;\n});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "name": "Single User",
+          "request": {
+            "description": "Retrieves the details of a single user by their ID. This request fetches user with ID `2` and returns a full user object nested under a `data` key.\n\n**Method:** GET  \n**Endpoint:** `/api/users/2`\n\n**Response (200 OK)**\n- `data` — user object containing `id`, `email`, `first_name`, `last_name`, and `avatar`\n\n**Tests verify:** status 200, JSON content type, presence of the `data` object, all required user fields, that the returned ID equals `2`, that the email matches `janet.weaver@reqres.in`, correct first and last name values, a valid avatar URL, correct data types for all fields, and non-empty names.",
+            "header": [],
+            "method": "GET",
+            "url": {
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "users",
+                "2"
+              ],
+              "raw": "{{base_url}}/api/users/2"
+            }
+          },
+          "response": []
+        },
+        {
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const response = pm.response.json();\n\n// 1. Verify the API returns Not Found\npm.test(\"Status code is 404\", function () {\n    pm.response.to.have.status(404);\n});\n\n// 2. Verify response content type\npm.test(\"Response has JSON content type\", function () {\n    pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/json\");\n});\n\n// 3. Verify response body is an empty object\npm.test(\"Response body is an empty object\", function () {\n    pm.expect(response).to.be.an(\"object\");\n    pm.expect(Object.keys(response)).to.have.lengthOf(0);\n});\n\n// 4. Verify response does not contain user data\npm.test(\"Response does not contain user data\", function () {\n    pm.expect(response).to.not.have.property(\"data\");\n});\n\n// 5. Verify response does not contain user details\npm.test(\"Response does not contain user details\", function () {\n    pm.expect(response).to.not.have.property(\"id\");\n    pm.expect(response).to.not.have.property(\"email\");\n    pm.expect(response).to.not.have.property(\"first_name\");\n    pm.expect(response).to.not.have.property(\"last_name\");\n    pm.expect(response).to.not.have.property(\"avatar\");\n});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "name": "User Not Found",
+          "request": {
+            "description": "Verifies the API's behavior when requesting a user that does not exist. This request attempts to fetch user with ID `23`, which is not present in the dataset, and expects a 404 Not Found response.\n\n**Method:** GET  \n**Endpoint:** `/api/users/23`\n\n**Response (404 Not Found)**\n- Empty JSON object `{}`\n\n**Tests verify:** status 404, JSON content type, that the response body is an empty object with no keys, and that no user-related fields (`data`, `id`, `email`, `first_name`, `last_name`, `avatar`) are present in the response.",
+            "header": [],
+            "method": "GET",
+            "url": {
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "users",
+                "23"
+              ],
+              "raw": "{{base_url}}/api/users/23"
+            }
+          },
+          "response": []
+        },
+        {
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const response = pm.response.json();\r\n\r\n// 1. Verify successful user creation\r\npm.test(\"Status code is 201\", function () {\r\n    pm.response.to.have.status(201);\r\n});\r\n\r\n// 2. Verify response content type\r\npm.test(\"Response has JSON content type\", function () {\r\n    pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/json\");\r\n});\r\n\r\n// 3. Verify all required response fields exist\r\npm.test(\"Response contains all required fields\", function () {\r\n    pm.expect(response).to.have.property(\"name\");\r\n    pm.expect(response).to.have.property(\"job\");\r\n    pm.expect(response).to.have.property(\"id\");\r\n    pm.expect(response).to.have.property(\"createdAt\");\r\n});\r\n\r\n// 4. Verify submitted name\r\npm.test(\"Name matches the request body\", function () {\r\n    pm.expect(response.name).to.equal(\"morpheus\");\r\n});\r\n\r\n// 5. Verify submitted job\r\npm.test(\"Job matches the request body\", function () {\r\n    pm.expect(response.job).to.equal(\"leader\");\r\n});\r\n\r\n// 6. Verify generated user ID\r\npm.test(\"Generated ID is not empty\", function () {\r\n    pm.expect(response.id).to.exist;\r\n    pm.expect(String(response.id).trim()).to.not.be.empty;\r\n});\r\n\r\n// 7. Verify creation timestamp\r\npm.test(\"CreatedAt is a valid date\", function () {\r\n    pm.expect(response.createdAt).to.exist;\r\n    pm.expect(new Date(response.createdAt).toISOString()).to.equal(response.createdAt);\r\n});\r\n\r\n// 8. Verify response data types\r\npm.test(\"Response fields have correct data types\", function () {\r\n    pm.expect(response.name).to.be.a(\"string\");\r\n    pm.expect(response.job).to.be.a(\"string\");\r\n    pm.expect(response.id).to.be.a(\"string\");\r\n    pm.expect(response.createdAt).to.be.a(\"string\");\r\n});\r\n\r\n// 9. Verify name and job are not empty\r\npm.test(\"Name and job are not empty\", function () {\r\n    pm.expect(response.name.trim()).to.not.be.empty;\r\n    pm.expect(response.job.trim()).to.not.be.empty;\r\n});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "name": "Create User",
+          "request": {
+            "body": {
+              "mode": "raw",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              },
+              "raw": "{\"name\":\"morpheus\",\"job\":\"leader\"}"
+            },
+            "description": "Creates a new user by sending a JSON payload with a `name` and `job`. The API responds with the created user's data including a server-generated `id` and a `createdAt` timestamp.\n\n**Method:** POST  \n**Endpoint:** `/api/users`\n\n**Request Body**\n```json\n{\n  \"name\": \"morpheus\",\n  \"job\": \"leader\"\n}\n```\n\n**Response (201 Created)**\n- `name` — the submitted name\n- `job` — the submitted job title\n- `id` — server-generated unique identifier (string)\n- `createdAt` — ISO 8601 timestamp of when the user was created\n\n**Tests verify:** status 201, JSON content type, presence of all four response fields, that `name` and `job` echo back the submitted values, that `id` is a non-empty string, that `createdAt` is a valid ISO 8601 date, correct data types, and non-empty name and job values.",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "method": "POST",
+            "url": {
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "users"
+              ],
+              "raw": "{{base_url}}/api/users"
+            }
+          },
+          "response": []
+        },
+        {
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const response = pm.response.json();\r\n\r\n// 1. Verify successful user update\r\npm.test(\"Status code is 200\", function () {\r\n    pm.response.to.have.status(200);\r\n});\r\n\r\n// 2. Verify response content type\r\npm.test(\"Response has JSON content type\", function () {\r\n    pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/json\");\r\n});\r\n\r\n// 3. Verify required response fields\r\npm.test(\"Response contains all required fields\", function () {\r\n    pm.expect(response).to.have.property(\"name\");\r\n    pm.expect(response).to.have.property(\"job\");\r\n    pm.expect(response).to.have.property(\"updatedAt\");\r\n});\r\n\r\n// 4. Verify updated name\r\npm.test(\"Name matches the request body\", function () {\r\n    pm.expect(response.name).to.equal(\"morpheus\");\r\n});\r\n\r\n// 5. Verify updated job\r\npm.test(\"Job matches the request body\", function () {\r\n    pm.expect(response.job).to.equal(\"zion resident\");\r\n});\r\n\r\n// 6. Verify update timestamp\r\npm.test(\"UpdatedAt is a valid date\", function () {\r\n    pm.expect(response.updatedAt).to.exist;\r\n    pm.expect(Date.parse(response.updatedAt)).to.not.be.NaN;\r\n});\r\n\r\n// 7. Verify response data types\r\npm.test(\"Response fields have correct data types\", function () {\r\n    pm.expect(response.name).to.be.a(\"string\");\r\n    pm.expect(response.job).to.be.a(\"string\");\r\n    pm.expect(response.updatedAt).to.be.a(\"string\");\r\n});\r\n\r\n// 8. Verify name and job are not empty\r\npm.test(\"Name and job are not empty\", function () {\r\n    pm.expect(response.name.trim()).to.not.be.empty;\r\n    pm.expect(response.job.trim()).to.not.be.empty;\r\n});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "name": "Update User",
+          "request": {
+            "body": {
+              "mode": "raw",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              },
+              "raw": "{\"name\":\"morpheus\",\"job\":\"zion resident\"}"
+            },
+            "description": "Performs a full replacement update on an existing user using the PUT method. This request replaces all fields of user with ID `2` with the provided payload. The API responds with the updated values and an `updatedAt` timestamp.\n\n**Method:** PUT  \n**Endpoint:** `/api/users/2`\n\n**Request Body**\n```json\n{\n  \"name\": \"morpheus\",\n  \"job\": \"zion resident\"\n}\n```\n\n**Response (200 OK)**\n- `name` — the updated name\n- `job` — the updated job title\n- `updatedAt` — timestamp of when the update was applied\n\n**Tests verify:** status 200, JSON content type, presence of `name`, `job`, and `updatedAt` fields, that `name` and `job` match the submitted values, that `updatedAt` is a valid date, correct data types, and non-empty name and job values.",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "method": "PUT",
+            "url": {
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "users",
+                "2"
+              ],
+              "raw": "{{base_url}}/api/users/2"
+            }
+          },
+          "response": []
+        },
+        {
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const response = pm.response.json();\r\n\r\n// 1. Verify successful user update\r\npm.test(\"Status code is 200\", function () {\r\n    pm.response.to.have.status(200);\r\n});\r\n\r\n// 2. Verify response content type\r\npm.test(\"Response has JSON content type\", function () {\r\n    pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/json\");\r\n});\r\n\r\n// 3. Verify required response fields\r\npm.test(\"Response contains all required fields\", function () {\r\n    pm.expect(response).to.have.property(\"job\");\r\n    pm.expect(response).to.have.property(\"updatedAt\");\r\n});\r\n\r\n// 4. Verify updated job\r\npm.test(\"Job matches the request body\", function () {\r\n    pm.expect(response.job).to.equal(\"zion resident\");\r\n});\r\n\r\n// 5. Verify update timestamp\r\npm.test(\"UpdatedAt is a valid date\", function () {\r\n    pm.expect(response.updatedAt).to.exist;\r\n    pm.expect(Date.parse(response.updatedAt)).to.not.be.NaN;\r\n});\r\n\r\n// 6. Verify response data types\r\npm.test(\"Response fields have correct data types\", function () {\r\n    pm.expect(response.job).to.be.a(\"string\");\r\n    pm.expect(response.updatedAt).to.be.a(\"string\");\r\n});\r\n\r\n// 7. Verify job is not empty\r\npm.test(\"Job is not empty\", function () {\r\n    pm.expect(response.job.trim()).to.not.be.empty;\r\n});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "name": "Update User",
+          "request": {
+            "body": {
+              "mode": "raw",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              },
+              "raw": "{\"job\":\"zion resident\"}"
+            },
+            "description": "Performs a partial update on an existing user using the PATCH method. Unlike PUT, only the fields included in the request body are updated — unspecified fields remain unchanged. This request updates only the `job` field of user with ID `2`.\n\n**Method:** PATCH  \n**Endpoint:** `/api/users/2`\n\n**Request Body**\n```json\n{\n  \"job\": \"zion resident\"\n}\n```\n\n**Response (200 OK)**\n- `job` — the updated job title\n- `updatedAt` — timestamp of when the update was applied\n\n**Tests verify:** status 200, JSON content type, presence of `job` and `updatedAt` fields, that `job` matches the submitted value, that `updatedAt` is a valid date, correct data types, and that `job` is not empty.",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "method": "PATCH",
+            "url": {
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "users",
+                "2"
+              ],
+              "raw": "{{base_url}}/api/users/2"
+            }
+          },
+          "response": []
+        },
+        {
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "// 1. Verify successful deletion\r\npm.test(\"Status code is 204\", function () {\r\n    pm.response.to.have.status(204);\r\n});\r\n\r\n// 2. Verify response body is empty\r\npm.test(\"Response body is empty\", function () {\r\n    pm.expect(pm.response.text()).to.equal(\"\");\r\n});\r\n\r\n// 3. Verify response has no content\r\npm.test(\"Response has zero body length\", function () {\r\n    pm.expect(pm.response.responseSize).to.equal(0);\r\n});\r\n\r\n"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "name": "Delete User",
+          "request": {
+            "description": "Deletes an existing user by their ID. This request removes user with ID `2` from the system. A successful deletion returns no response body, only a 204 No Content status.\n\n**Method:** DELETE  \n**Endpoint:** `/api/users/2`\n\n**Response (204 No Content)**\n- Empty body — no content is returned on successful deletion\n\n**Tests verify:** status 204, that the response body is completely empty (empty string), and that the response body size is zero bytes.",
+            "header": [],
+            "method": "DELETE",
+            "url": {
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "users",
+                "2"
+              ],
+              "raw": "{{base_url}}/api/users/2"
+            }
+          },
+          "response": []
+        },
+        {
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const response = pm.response.json();\r\n\r\n// 1. Verify successful response\r\npm.test(\"Status code is 200\", function () {\r\n    pm.response.to.have.status(200);\r\n});\r\n\r\n// 2. Verify response content type\r\npm.test(\"Response has JSON content type\", function () {\r\n    pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/json\");\r\n});\r\n\r\n// 3. Verify response time\r\npm.test(\"Response time is at least 2 seconds\", function () {\r\n    pm.expect(pm.response.responseTime).to.be.at.least(2000);\r\n});\r\n\r\n// 4. Verify pagination fields\r\npm.test(\"Response contains pagination fields\", function () {\r\n    pm.expect(response).to.have.property(\"page\");\r\n    pm.expect(response).to.have.property(\"per_page\");\r\n    pm.expect(response).to.have.property(\"total\");\r\n    pm.expect(response).to.have.property(\"total_pages\");\r\n});\r\n\r\n// 5. Verify pagination data types\r\npm.test(\"Pagination fields have correct data types\", function () {\r\n    pm.expect(response.page).to.be.a(\"number\");\r\n    pm.expect(response.per_page).to.be.a(\"number\");\r\n    pm.expect(response.total).to.be.a(\"number\");\r\n    pm.expect(response.total_pages).to.be.a(\"number\");\r\n});\r\n\r\n// 6. Verify user data array\r\npm.test(\"Response contains a non-empty users array\", function () {\r\n    pm.expect(response.data).to.be.an(\"array\").that.is.not.empty;\r\n});\r\n\r\n// 7. Verify number of returned users\r\npm.test(\"Returned users count matches per_page\", function () {\r\n    pm.expect(response.data.length).to.equal(response.per_page);\r\n});\r\n\r\n// 8. Verify required fields for every user\r\npm.test(\"Every user contains all required fields\", function () {\r\n    response.data.forEach(function (user) {\r\n        pm.expect(user).to.have.all.keys(\r\n            \"id\",\r\n            \"email\",\r\n            \"first_name\",\r\n            \"last_name\",\r\n            \"avatar\"\r\n        );\r\n    });\r\n});\r\n\r\n// 9. Verify user data types\r\npm.test(\"Every user has correct data types\", function () {\r\n    response.data.forEach(function (user) {\r\n        pm.expect(user.id).to.be.a(\"number\");\r\n        pm.expect(user.email).to.be.a(\"string\");\r\n        pm.expect(user.first_name).to.be.a(\"string\");\r\n        pm.expect(user.last_name).to.be.a(\"string\");\r\n        pm.expect(user.avatar).to.be.a(\"string\");\r\n    });\r\n});\r\n\r\n// 10. Verify email formats\r\npm.test(\"Every user has a valid email format\", function () {\r\n    response.data.forEach(function (user) {\r\n        pm.expect(user.email).to.match(/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/);\r\n    });\r\n});\r\n\r\n// 11. Verify avatar URLs\r\npm.test(\"Every user has a valid avatar URL\", function () {\r\n    response.data.forEach(function (user) {\r\n        pm.expect(user.avatar).to.match(/^https?:\\/\\/.+/);\r\n    });\r\n});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "name": "Delayed Response",
+          "request": {
+            "description": "Simulates a slow API response by instructing the server to delay its reply by a specified number of seconds. This is useful for testing client-side timeout handling, loading states, and response time thresholds. The `delay` query parameter controls how many seconds the server waits before responding.\n\n**Method:** GET  \n**Endpoint:** `/api/users?delay=2`\n\n**Query Parameters**\n- `delay` — number of seconds the server should wait before responding (set to `2`)\n\n**Response (200 OK)**\n- Same paginated user list structure as the List Users request (`page`, `per_page`, `total`, `total_pages`, `data`)\n\n**Tests verify:** status 200, JSON content type, that the response time is at least 2000ms, presence and correct types of all pagination fields, a non-empty `data` array, that the returned user count matches `per_page`, that every user has all required fields with correct data types, valid email formats, and valid avatar URLs.",
+            "header": [],
+            "method": "GET",
+            "url": {
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "users"
+              ],
+              "query": [
+                {
+                  "key": "delay",
+                  "value": "2"
+                }
+              ],
+              "raw": "{{base_url}}/api/users?delay=2"
+            }
+          },
+          "response": []
+        }
+      ],
+      "name": "Users"
+    },
+    {
+      "description": "Contains requests for the generic resource endpoint (`/api/unknown`), which returns color data representing Pantone colors of the year. These requests cover listing, fetching a single item, and handling a not-found case.\n\n**Requests in this folder:**\n- **List Resource** — paginated list of all resources (`GET /api/unknown`)\n- **Single Resource** — fetch a specific resource by ID (`GET /api/unknown/2`)\n- **Resource Not Found** — 404 response for a non-existent resource (`GET /api/unknown/23`)\n\n**Resource object fields:** `id`, `name`, `year`, `color` (hex format `#RRGGBB`), `pantone_value` (format `NN-NNNN`)",
+      "item": [
+        {
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const response = pm.response.json();\r\n\r\n// 1. Verify successful response\r\npm.test(\"Status code is 200\", function () {\r\n    pm.response.to.have.status(200);\r\n});\r\n\r\n// 2. Verify response content type\r\npm.test(\"Response has JSON content type\", function () {\r\n    pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/json\");\r\n});\r\n\r\n// 3. Verify pagination fields\r\npm.test(\"Response contains pagination fields\", function () {\r\n    pm.expect(response).to.have.property(\"page\");\r\n    pm.expect(response).to.have.property(\"per_page\");\r\n    pm.expect(response).to.have.property(\"total\");\r\n    pm.expect(response).to.have.property(\"total_pages\");\r\n});\r\n\r\n// 4. Verify pagination data types\r\npm.test(\"Pagination fields have correct data types\", function () {\r\n    pm.expect(response.page).to.be.a(\"number\");\r\n    pm.expect(response.per_page).to.be.a(\"number\");\r\n    pm.expect(response.total).to.be.a(\"number\");\r\n    pm.expect(response.total_pages).to.be.a(\"number\");\r\n});\r\n\r\n// 5. Verify pagination values\r\npm.test(\"Pagination values are valid\", function () {\r\n    pm.expect(response.page).to.be.above(0);\r\n    pm.expect(response.per_page).to.be.above(0);\r\n    pm.expect(response.total).to.be.at.least(0);\r\n    pm.expect(response.total_pages).to.be.at.least(0);\r\n});\r\n\r\n// 6. Verify resource data array\r\npm.test(\"Response contains a non-empty resources array\", function () {\r\n    pm.expect(response.data).to.be.an(\"array\").that.is.not.empty;\r\n});\r\n\r\n// 7. Verify returned resource count\r\npm.test(\"Returned resource count does not exceed per_page\", function () {\r\n    pm.expect(response.data.length).to.be.at.most(response.per_page);\r\n});\r\n\r\n// 8. Verify required fields for every resource\r\npm.test(\"Every resource contains all required fields\", function () {\r\n    response.data.forEach(function (resource) {\r\n        pm.expect(resource).to.have.all.keys(\r\n            \"id\",\r\n            \"name\",\r\n            \"year\",\r\n            \"color\",\r\n            \"pantone_value\"\r\n        );\r\n    });\r\n});\r\n\r\n// 9. Verify resource data types\r\npm.test(\"Every resource has correct data types\", function () {\r\n    response.data.forEach(function (resource) {\r\n        pm.expect(resource.id).to.be.a(\"number\");\r\n        pm.expect(resource.name).to.be.a(\"string\");\r\n        pm.expect(resource.year).to.be.a(\"number\");\r\n        pm.expect(resource.color).to.be.a(\"string\");\r\n        pm.expect(resource.pantone_value).to.be.a(\"string\");\r\n    });\r\n});\r\n\r\n// 10. Verify resource IDs\r\npm.test(\"Every resource ID is a positive integer\", function () {\r\n    response.data.forEach(function (resource) {\r\n        pm.expect(resource.id).to.be.above(0);\r\n        pm.expect(Number.isInteger(resource.id)).to.be.true;\r\n    });\r\n});\r\n\r\n// 11. Verify resource names\r\npm.test(\"Every resource name is not empty\", function () {\r\n    response.data.forEach(function (resource) {\r\n        pm.expect(resource.name.trim()).to.not.be.empty;\r\n    });\r\n});\r\n\r\n// 12. Verify resource colors\r\npm.test(\"Every resource color has a valid hexadecimal format\", function () {\r\n    response.data.forEach(function (resource) {\r\n        pm.expect(resource.color).to.match(/^#[0-9A-Fa-f]{6}$/);\r\n    });\r\n});\r\n\r\n// 13. Verify Pantone values\r\npm.test(\"Every Pantone value follows the expected format\", function () {\r\n    response.data.forEach(function (resource) {\r\n        pm.expect(resource.pantone_value).to.match(/^\\d{2}-\\d{4}$/);\r\n    });\r\n});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "name": "List Resource ",
+          "request": {
+            "description": "Retrieves a paginated list of all resources (color data) from the API. Each resource represents a named color with its associated year, hex color code, and Pantone value. The endpoint is `/api/unknown`, which is Reqres's generic resource endpoint.\n\n**Method:** GET  \n**Endpoint:** `/api/unknown`\n\n**Response (200 OK)**\n- `page`, `per_page`, `total`, `total_pages` — pagination metadata\n- `data` — array of resource objects, each containing `id`, `name`, `year`, `color` (hex), and `pantone_value`\n\n**Tests verify:** status 200, JSON content type, presence and correct types of all pagination fields, valid pagination values, a non-empty `data` array, that the returned count does not exceed `per_page`, that every resource has all five required fields with correct data types, positive integer IDs, non-empty names, valid hex color format (`#RRGGBB`), and valid Pantone format (`NN-NNNN`).",
+            "header": [],
+            "method": "GET",
+            "url": {
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "unknown"
+              ],
+              "raw": "{{base_url}}/api/unknown"
+            }
+          },
+          "response": []
+        },
+        {
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const response = pm.response.json();\r\n\r\n// 1. Verify successful response\r\npm.test(\"Status code is 200\", function () {\r\n    pm.response.to.have.status(200);\r\n});\r\n\r\n// 2. Verify response content type\r\npm.test(\"Response has JSON content type\", function () {\r\n    pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/json\");\r\n});\r\n\r\n// 3. Verify response contains resource data\r\npm.test(\"Response contains resource data\", function () {\r\n    pm.expect(response).to.have.property(\"data\");\r\n    pm.expect(response.data).to.be.an(\"object\");\r\n});\r\n\r\n// 4. Verify all required resource fields\r\npm.test(\"Resource contains all required fields\", function () {\r\n    pm.expect(response.data).to.have.all.keys(\r\n        \"id\",\r\n        \"name\",\r\n        \"year\",\r\n        \"color\",\r\n        \"pantone_value\"\r\n    );\r\n});\r\n\r\n// 5. Verify resource ID\r\npm.test(\"Resource ID is correct\", function () {\r\n    pm.expect(response.data.id).to.equal(2);\r\n});\r\n\r\n// 6. Verify resource name\r\npm.test(\"Resource name is correct\", function () {\r\n    pm.expect(response.data.name).to.equal(\"fuchsia rose\");\r\n});\r\n\r\n// 7. Verify resource year\r\npm.test(\"Resource year is correct\", function () {\r\n    pm.expect(response.data.year).to.equal(2001);\r\n});\r\n\r\n// 8. Verify resource color\r\npm.test(\"Resource color is correct\", function () {\r\n    pm.expect(response.data.color).to.equal(\"#C74375\");\r\n});\r\n\r\n// 9. Verify Pantone value\r\npm.test(\"Pantone value is correct\", function () {\r\n    pm.expect(response.data.pantone_value).to.equal(\"17-2031\");\r\n});\r\n\r\n// 10. Verify resource data types\r\npm.test(\"Resource fields have correct data types\", function () {\r\n    pm.expect(response.data.id).to.be.a(\"number\");\r\n    pm.expect(response.data.name).to.be.a(\"string\");\r\n    pm.expect(response.data.year).to.be.a(\"number\");\r\n    pm.expect(response.data.color).to.be.a(\"string\");\r\n    pm.expect(response.data.pantone_value).to.be.a(\"string\");\r\n});\r\n\r\n// 11. Verify color format\r\npm.test(\"Resource color has a valid hexadecimal format\", function () {\r\n    pm.expect(response.data.color).to.match(/^#[0-9A-Fa-f]{6}$/);\r\n});\r\n\r\n// 12. Verify Pantone format\r\npm.test(\"Pantone value has a valid format\", function () {\r\n    pm.expect(response.data.pantone_value).to.match(/^\\d{2}-\\d{4}$/);\r\n});\r\n\r\n// 13. Verify resource name is not empty\r\npm.test(\"Resource name is not empty\", function () {\r\n    pm.expect(response.data.name.trim()).to.not.be.empty;\r\n});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "name": "Single Resource ",
+          "request": {
+            "description": "Retrieves the details of a single resource by its ID. This request fetches resource with ID `2` — \"Fuchsia Rose\" (Pantone color of the year 2001) — and returns the full resource object nested under a `data` key.\n\n**Method:** GET  \n**Endpoint:** `/api/unknown/2`\n\n**Response (200 OK)**\n- `data` — resource object containing `id`, `name`, `year`, `color` (hex), and `pantone_value`\n\n**Expected values:**\n- `id`: `2`\n- `name`: `\"fuchsia rose\"`\n- `year`: `2001`\n- `color`: `\"#C74375\"`\n- `pantone_value`: `\"17-2031\"`\n\n**Tests verify:** status 200, JSON content type, presence of the `data` object, all five required fields, exact field values, correct data types, valid hex color format, valid Pantone format, and a non-empty name.",
+            "header": [],
+            "method": "GET",
+            "url": {
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "unknown",
+                "2"
+              ],
+              "raw": "{{base_url}}/api/unknown/2"
+            }
+          },
+          "response": []
+        },
+        {
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const response = pm.response.json();\r\n\r\n// 1. Verify the API returns Not Found\r\npm.test(\"Status code is 404\", function () {\r\n    pm.response.to.have.status(404);\r\n});\r\n\r\n// 2. Verify response content type\r\npm.test(\"Response has JSON content type\", function () {\r\n    pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/json\");\r\n});\r\n\r\n// 3. Verify response body is an empty object\r\npm.test(\"Response body is an empty object\", function () {\r\n    pm.expect(response).to.be.an(\"object\");\r\n    pm.expect(Object.keys(response)).to.have.lengthOf(0);\r\n});\r\n\r\n// 4. Verify response does not contain resource data\r\npm.test(\"Response does not contain resource data\", function () {\r\n    pm.expect(response).to.not.have.property(\"data\");\r\n});\r\n\r\n// 5. Verify response does not contain resource details\r\npm.test(\"Response does not contain resource details\", function () {\r\n    pm.expect(response).to.not.have.property(\"id\");\r\n    pm.expect(response).to.not.have.property(\"name\");\r\n    pm.expect(response).to.not.have.property(\"year\");\r\n    pm.expect(response).to.not.have.property(\"color\");\r\n    pm.expect(response).to.not.have.property(\"pantone_value\");\r\n});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "name": "Resource Not Found",
+          "request": {
+            "description": "Verifies the API's behavior when requesting a resource that does not exist. This request attempts to fetch resource with ID `23`, which is not present in the dataset, and expects a 404 Not Found response.\n\n**Method:** GET  \n**Endpoint:** `/api/unknown/23`\n\n**Response (404 Not Found)**\n- Empty JSON object `{}`\n\n**Tests verify:** status 404, JSON content type, that the response body is an empty object with no keys, and that no resource-related fields (`data`, `id`, `name`, `year`, `color`, `pantone_value`) are present in the response.",
+            "header": [],
+            "method": "GET",
+            "url": {
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "unknown",
+                "23"
+              ],
+              "raw": "{{base_url}}/api/unknown/23"
+            }
+          },
+          "response": []
+        }
+      ],
+      "name": "Resources"
+    },
+    {
+      "description": "Contains requests for user registration and login, covering both the happy path (successful token issuance) and the error path (missing password validation).\n\n**Requests in this folder:**\n- **Register Success** — register a new user with email and password, returns `id` and `token` (`POST /api/register`)\n- **Register No Password** — registration attempt without a password, returns 400 with `\"Missing password\"` error (`POST /api/register`)\n- **Login Success** — authenticate with valid credentials, returns an auth `token` (`POST /api/login`)\n- **Login No Password** — login attempt without a password, returns 400 with `\"Missing password\"` error (`POST /api/login`)\n\nAll requests in this folder use a JSON body with `Content-Type: application/json`. The token returned by successful register/login requests can be used as a bearer token for authenticated endpoints.",
+      "item": [
+        {
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "// Parse the JSON response\r\nconst response = pm.response.json();\r\n\r\n// 1. Verify successful registration\r\npm.test(\"Status code is 200\", function () {\r\n    pm.response.to.have.status(200);\r\n});\r\n\r\n// 2. Verify response content type\r\npm.test(\"Response has JSON content type\", function () {\r\n    pm.expect(pm.response.headers.get(\"Content-Type\"))\r\n        .to.include(\"application/json\");\r\n});\r\n\r\n// 3. Verify required response fields\r\npm.test(\"Response contains ID and token\", function () {\r\n    pm.expect(response).to.have.property(\"id\");\r\n    pm.expect(response).to.have.property(\"token\");\r\n});\r\n\r\n// 4. Verify user ID\r\npm.test(\"User ID is a positive number\", function () {\r\n    pm.expect(response.id).to.be.a(\"number\");\r\n    pm.expect(response.id).to.be.above(0);\r\n});\r\n\r\n// 5. Verify registration token\r\npm.test(\"Token is a non-empty string\", function () {\r\n    pm.expect(response.token).to.be.a(\"string\");\r\n    pm.expect(response.token.trim()).to.not.be.empty;\r\n});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "name": "Register Success ",
+          "request": {
+            "body": {
+              "mode": "raw",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              },
+              "raw": "{\r\n    \"email\": \"eve.holt@reqres.in\",\r\n    \"password\": \"cityslicka\"\r\n}"
+            },
+            "description": "Registers a new user account by submitting a valid email and password. On success, the API returns a user ID and an authentication token that can be used for subsequent authenticated requests.\n\n**Method:** POST  \n**Endpoint:** `/api/register`\n\n**Request Body**\n```json\n{\n  \"email\": \"eve.holt@reqres.in\",\n  \"password\": \"cityslicka\"\n}\n```\n\n**Response (200 OK)**\n- `id` — the registered user's ID (positive integer)\n- `token` — authentication token (non-empty string)\n\n**Tests verify:** status 200, JSON content type, presence of both `id` and `token` fields, that `id` is a positive number, and that `token` is a non-empty string.",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "method": "POST",
+            "url": {
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "register"
+              ],
+              "raw": "{{base_url}}/api/register"
+            }
+          },
+          "response": []
+        },
+        {
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "// Parse the JSON response\r\nconst response = pm.response.json();\r\n\r\n// 1. Verify successful login\r\npm.test(\"Status code is 200\", function () {\r\n    pm.response.to.have.status(200);\r\n});\r\n\r\n// 2. Verify response content type\r\npm.test(\"Response has JSON content type\", function () {\r\n    pm.expect(pm.response.headers.get(\"Content-Type\"))\r\n        .to.include(\"application/json\");\r\n});\r\n\r\n// 3. Verify the response contains a token\r\npm.test(\"Response contains a token field\", function () {\r\n    pm.expect(response).to.have.property(\"token\");\r\n});\r\n\r\n// 4. Verify token data type\r\npm.test(\"Token is a string\", function () {\r\n    pm.expect(response.token).to.be.a(\"string\");\r\n});\r\n\r\n// 5. Verify token is not empty\r\npm.test(\"Token is not empty\", function () {\r\n    pm.expect(response.token.trim()).to.not.be.empty;\r\n});\r\n"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "name": "Login Success ",
+          "request": {
+            "body": {
+              "mode": "raw",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              },
+              "raw": "{\"email\":\"eve.holt@reqres.in\",\"password\":\"cityslicka\"}"
+            },
+            "description": "Authenticates an existing user by submitting a valid email and password. On success, the API returns an authentication token that represents the user's session.\n\n**Method:** POST  \n**Endpoint:** `/api/login`\n\n**Request Body**\n```json\n{\n  \"email\": \"eve.holt@reqres.in\",\n  \"password\": \"cityslicka\"\n}\n```\n\n**Response (200 OK)**\n- `token` — authentication token (non-empty string)\n\n**Tests verify:** status 200, JSON content type, presence of the `token` field, that `token` is a string, and that `token` is not empty.",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "method": "POST",
+            "url": {
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "login"
+              ],
+              "raw": "{{base_url}}/api/login"
+            }
+          },
+          "response": []
+        },
+        {
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "// Parse the JSON response\r\nconst response = pm.response.json();\r\n\r\n// 1. Verify the API rejects the login request\r\npm.test(\"Status code is 400\", function () {\r\n    pm.response.to.have.status(400);\r\n});\r\n\r\n// 2. Verify response content type\r\npm.test(\"Response has JSON content type\", function () {\r\n    pm.expect(pm.response.headers.get(\"Content-Type\"))\r\n        .to.include(\"application/json\");\r\n});\r\n\r\n// 3. Verify the response contains an error field\r\npm.test(\"Response contains an error field\", function () {\r\n    pm.expect(response).to.have.property(\"error\");\r\n});\r\n\r\n// 4. Verify the error message\r\npm.test(\"Error message indicates missing password\", function () {\r\n    pm.expect(response.error).to.equal(\"Missing password\");\r\n});\r\n\r\n// 5. Verify no authentication token is returned\r\npm.test(\"Response does not contain a token\", function () {\r\n    pm.expect(response).to.not.have.property(\"token\");\r\n});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "name": "Login No Password",
+          "request": {
+            "body": {
+              "mode": "raw",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              },
+              "raw": "{\r\n    \"email\": \"eve.holt@reqres.in\"\r\n}"
+            },
+            "description": "Verifies the API's validation behavior when a login request is submitted without a password. The API should reject the request with a 400 Bad Request and return a descriptive error message, without issuing any token.\n\n**Method:** POST  \n**Endpoint:** `/api/login`\n\n**Request Body**\n```json\n{\n  \"email\": \"eve.holt@reqres.in\"\n}\n```\n\n**Response (400 Bad Request)**\n- `error` — error message: `\"Missing password\"`\n\n**Tests verify:** status 400, JSON content type, presence of the `error` field, that the error message equals `\"Missing password\"`, and that no `token` field is present in the response.",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "method": "POST",
+            "url": {
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "login"
+              ],
+              "raw": "{{base_url}}/api/login"
+            }
+          },
+          "response": []
+        },
+        {
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "// Parse the JSON response\r\nconst response = pm.response.json();\r\n\r\n// 1. Verify the API rejects the registration request\r\npm.test(\"Status code is 400\", function () {\r\n    pm.response.to.have.status(400);\r\n});\r\n\r\n// 2. Verify response content type\r\npm.test(\"Response has JSON content type\", function () {\r\n    pm.expect(pm.response.headers.get(\"Content-Type\"))\r\n        .to.include(\"application/json\");\r\n});\r\n\r\n// 3. Verify the response contains an error field\r\npm.test(\"Response contains an error field\", function () {\r\n    pm.expect(response).to.have.property(\"error\");\r\n});\r\n\r\n// 4. Verify the error message\r\npm.test(\"Error message indicates missing password\", function () {\r\n    pm.expect(response.error).to.equal(\"Missing password\");\r\n});\r\n\r\n// 5. Verify no registration token is returned\r\npm.test(\"Response does not contain a token\", function () {\r\n    pm.expect(response).to.not.have.property(\"token\");\r\n});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "name": "Register No Password",
+          "request": {
+            "body": {
+              "mode": "raw",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              },
+              "raw": "{\r\n    \"email\": \"eve.holt@reqres.in\"\r\n}"
+            },
+            "description": "Verifies the API's validation behavior when a registration request is submitted without a password. The API should reject the request with a 400 Bad Request and return a descriptive error message, without issuing any token.\n\n**Method:** POST  \n**Endpoint:** `/api/register`\n\n**Request Body**\n```json\n{\n  \"email\": \"eve.holt@reqres.in\"\n}\n```\n\n**Response (400 Bad Request)**\n- `error` — error message: `\"Missing password\"`\n\n**Tests verify:** status 400, JSON content type, presence of the `error` field, that the error message equals `\"Missing password\"`, and that no `token` field is present in the response.",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "method": "POST",
+            "url": {
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "register"
+              ],
+              "raw": "{{base_url}}/api/register"
+            }
+          },
+          "response": []
+        }
+      ],
+      "name": "Authentication"
+    }
+  ]
+}
